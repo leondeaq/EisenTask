@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Tareas con Prioridad - UNAM MAC</title>
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Iconos de Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; min-height: 100vh; }
+        .sidebar { background-color: #1e293b; color: white; min-height: 100vh; }
+        .nav-pills .nav-link { color: #cbd5e1; border-radius: 8px; margin-bottom: 6px; font-weight: 500; }
+        .nav-pills .nav-link:hover { color: white; background-color: #334155; }
+        .nav-pills .nav-link.active { background-color: #0d6efd !important; color: white !important; }
+        .card-task { border-left: 5px solid #0d6efd; }
+        .priority-high { border-left-color: #dc3545 !important; }   /* Muy Urgente */
+        .priority-medium { border-left-color: #ffc107 !important; } /* Urgente */
+        .priority-low { border-left-color: #198754 !important; }    /* Poco Urgente */
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+        
+        <!-- PANEL IZQUIERDO: Menú de Navegación Sidebar -->
+        <nav class="col-md-3 col-lg-2 sidebar p-3">
+            <div class="d-flex align-items-center mb-4 text-white text-decoration-none">
+                <i class="bi bi-layers-fill fs-3 me-2 text-primary"></i>
+                <span class="fs-5 fw-bold">TaskFlow C++</span>
+            </div>
+            <hr class="text-secondary">
+            <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist">
+                <button class="nav-link active text-start" id="tab-insertar-btn" data-bs-toggle="pill" data-bs-target="#tab-insertar" type="button" role="tab">
+                    <i class="bi bi-plus-circle me-2"></i> Insertar Tarea
+                </button>
+                <button class="nav-link text-start" id="tab-lista-btn" data-bs-toggle="pill" data-bs-target="#tab-lista" type="button" role="tab">
+                    <i class="bi bi-list-task me-2"></i> Mostrar Lista
+                </button>
+                <button class="nav-link text-start" id="tab-creditos-btn" data-bs-toggle="pill" data-bs-target="#tab-creditos" type="button" role="tab">
+                    <i class="bi bi-people me-2"></i> Créditos
+                </button>
+            </div>
+        </nav>
+
+        <!-- PANEL DERECHO: Contenido Dinámico según Pestaña -->
+        <main class="col-md-9 col-lg-10 p-4">
+            <div class="tab-content" id="v-pills-tabContent">
+
+                <!-- PESTAÑA 1: INSERTAR TAREA -->
+                <div class="tab-pane fade show active" id="tab-insertar" role="tabpanel">
+                    <h3 class="fw-bold text-dark mb-4"><i class="bi bi-plus-square text-primary me-2"></i>Nueva Tarea</h3>
+                    <div class="card shadow-sm p-4" style="max-width: 600px;">
+                        <form id="formTarea" onsubmit="agregarTareaC(event)">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Descripción de la Actividad:</label>
+                                <input type="text" id="txtTarea" class="form-control" placeholder="Ej. Hacer tarea de Estructuras de Datos" required>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Nivel de Urgencia:</label>
+                                    <select id="selUrgencia" class="form-select" required>
+                                        <option value="3" selected>🔴 Muy Urgente</option>
+                                        <option value="2">🟡 Urgente</option>
+                                        <option value="1">🟢 Poco Urgente</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Nivel de Importancia:</label>
+                                    <select id="selImportancia" class="form-select" required>
+                                        <option value="3" selected>⭐ Muy Importante</option>
+                                        <option value="2">🔹 Importante</option>
+                                        <option value="1">🔸 Poco Importante</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button type="submit" id="btnAgregar" class="btn btn-primary w-100 fw-bold mt-2" disabled>
+                                <i class="bi bi-hourglass-split me-1"></i> Cargando C++ en memoria...
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- PESTAÑA 2: MOSTRAR LISTA DE TAREAS -->
+                <div class="tab-pane fade" id="tab-lista" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h3 class="fw-bold text-dark m-0"><i class="bi bi-sort-down text-primary me-2"></i>Lista de Tareas Ordenadas</h3>
+                        <button class="btn btn-outline-danger btn-sm" onclick="atenderFrenteC()">
+                            <i class="bi bi-check2-circle me-1"></i> Atender Tarea Más Urgente (Frente)
+                        </button>
+                    </div>
+
+                    <!-- Contenedor donde se insertarán las tarjetas dinámicas -->
+                    <div id="contenedorLista" class="d-flex flex-column gap-3">
+                        <!-- Las tareas se renderizan mediante C++ WASM -->
+                    </div>
+                </div>
+
+                <!-- PESTAÑA 3: CRÉDITOS -->
+                <div class="tab-pane fade" id="tab-creditos" role="tabpanel">
+                    <h3 class="fw-bold text-dark mb-4"><i class="bi bi-info-circle text-primary me-2"></i>Créditos del Proyecto</h3>
+                    <div class="card shadow-sm p-4">
+                        <h4 class="text-primary fw-bold">Universidad Nacional Autónoma de México</h4>
+                        <h5 class="text-secondary">Facultad de Estudios Superiores Acatlán / FCI</h5>
+                        <p class="mb-1"><strong>Carrera:</strong> Licenciatura en Matemáticas Aplicadas y Computación (MAC)</p>
+                        <p class="mb-3"><strong>Asignatura:</strong> Estructuras de Datos</p>
+                        
+                        <hr>
+                        <h6 class="fw-bold">Equipo de Desarrollo:</h6>
+                        <ul class="list-group list-group-flush mb-3">
+                            <li class="list-group-item"><i class="bi bi-person-fill me-2 text-primary"></i>Integrante 1 (Lógica C++ Core & Memoria Dinámica)</li>
+                            <li class="list-group-item"><i class="bi bi-person-fill me-2 text-primary"></i>Integrante 2 (Compilación WebAssembly & Enlace WASM/JS)</li>
+                            <li class="list-group-item"><i class="bi bi-person-fill me-2 text-primary"></i>Integrante 3 (Diseño Frontend Bootstrap & GitHub Pages)</li>
+                        </ul>
+
+                        <div class="alert alert-light border">
+                            <small class="text-muted"><i class="bi bi-code-slash me-1"></i> <strong>Tecnología:</strong> Aplicación desarrollada en C++ puro utilizando asignación dinámica de memoria (`new`/`delete`) compilada a WebAssembly (WASM) mediante Emscripten.</small>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Scripts de Bootstrap -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Cargar el conector de WebAssembly generado por Emscripten -->
+<script src="core.js"></script>
+
+<script>
+    // Declaración de las funciones envueltas de C++ (usamos 'Wasm' al final para evitar colisión de nombres con core.js)
+    let insertarTareaWasm, obtenerListaJSONWasm, eliminarTareaWasm, eliminarFrenteWasm;
+
+    // Se ejecuta automáticamente cuando WebAssembly termina de cargar en RAM
+    Module.onRuntimeInitialized = function() {
+        insertarTareaWasm = Module.cwrap('insertarTarea', null, ['string', 'number', 'number']);
+        obtenerListaJSONWasm = Module.cwrap('obtenerListaJSON', 'string', []);
+        eliminarTareaWasm = Module.cwrap('eliminarTarea', 'number', ['string']);
+        eliminarFrenteWasm = Module.cwrap('eliminarFrente', 'number', []);
+
+        const btn = document.getElementById('btnAgregar');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-save me-1"></i> Agregar a la Cola de Prioridad';
+
+        renderizarListaDesdeC();
+    };
+
+    function renderizarListaDesdeC() {
+        if (!obtenerListaJSONWasm) return;
+
+        const jsonStr = obtenerListaJSONWasm();
+        const tareas = JSON.parse(jsonStr);
+        const contenedor = document.getElementById("contenedorLista");
+        contenedor.innerHTML = "";
+
+        if (tareas.length === 0) {
+            contenedor.innerHTML = `<div class="alert alert-success text-center"><i class="bi bi-check-circle me-2"></i>¡No hay tareas pendientes en la memoria RAM de C++!</div>`;
+            return;
+        }
+
+        tareas.forEach((item, index) => {
+            let badgeColor = item.urgencia === 3 ? "bg-danger" : (item.urgencia === 2 ? "bg-warning text-dark" : "bg-success");
+            let borderClass = item.urgencia === 3 ? "priority-high" : (item.urgencia === 2 ? "priority-medium" : "priority-low");
+            
+            let html = `
+                <div class="card shadow-sm card-task ${borderClass} p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge ${badgeColor} me-2">Prioridad #${index + 1} (Puntaje C++: ${item.prioridad})</span>
+                            <h5 class="d-inline fw-bold text-dark">${item.tarea}</h5>
+                            <div class="mt-2 text-muted small">
+                                <span>Urgencia: ${item.urgencia === 3 ? 'Muy Urgente' : (item.urgencia === 2 ? 'Urgente' : 'Poco Urgente')}</span> | 
+                                <span>Importancia: ${item.importancia === 3 ? 'Muy Importante' : (item.importancia === 2 ? 'Importante' : 'Poco Importante')}</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-outline-success btn-sm" onclick="completarTareaC('${item.tarea.replace(/'/g, "\\'")}')">
+                            <i class="bi bi-check-lg me-1"></i> Completar
+                        </button>
+                    </div>
+                </div>
+            `;
+            contenedor.innerHTML += html;
+        });
+    }
+
+    function agregarTareaC(e) {
+        e.preventDefault();
+        const desc = document.getElementById("txtTarea").value;
+        const urg = parseInt(document.getElementById("selUrgencia").value);
+        const imp = parseInt(document.getElementById("selImportancia").value);
+
+        // Llamada directa a C++ en WebAssembly
+        insertarTareaWasm(desc, urg, imp);
+
+        document.getElementById("txtTarea").value = "";
+        
+        // Cambiar a la pestaña de lista para ver el resultado ordenado por C++
+        const listaTab = new bootstrap.Tab(document.getElementById('tab-lista-btn'));
+        listaTab.show();
+        
+        renderizarListaDesdeC();
+    }
+
+    function completarTareaC(nombreTarea) {
+        // Llamada a C++ para eliminar por nombre y liberar memoria
+        eliminarTareaWasm(nombreTarea);
+        renderizarListaDesdeC();
+    }
+
+    function atenderFrenteC() {
+        // Llamada a C++ para eliminar el frente (cabeza)
+        eliminarFrenteWasm();
+        renderizarListaDesdeC();
+    }
+</script>
+
+</body>
+</html>
