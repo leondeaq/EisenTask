@@ -3,189 +3,413 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestor de Tareas con Prioridad - UNAM MAC</title>
-    <!-- Bootstrap 5 CDN -->
+    <title>Gestor de Tareas con Prioridad (C++ WebAssembly) - UNAM MAC</title>
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Iconos de Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-
+        :root {
+            --unam-blue: #002b49;
+            --unam-gold: #d4af37;
+        }
+        body {
+            background-color: #f1f5f9;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            min-height: 100vh;
+        }
+        /* Navbar institucional UNAM */
+        .navbar-unam {
+            background-color: var(--unam-blue);
+            border-bottom: 3px solid var(--unam-gold);
+        }
+        .nav-pills .nav-link {
+            color: #475569;
+            font-weight: 600;
+            border-radius: 8px;
+            padding: 10px 16px;
+            transition: all 0.2s ease;
+        }
+        .nav-pills .nav-link:hover {
+            background-color: #e2e8f0;
+            color: var(--unam-blue);
+        }
+        .nav-pills .nav-link.active {
+            background-color: var(--unam-blue) !important;
+            color: white !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        /* Estilos de Tarjetas de Tarea */
+        .card-task {
+            border: none;
+            border-left: 6px solid #0d6efd;
+            border-radius: 8px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .card-task:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.08) !important;
+        }
+        .priority-high { border-left-color: #dc3545 !important; }   /* Muy Urgente (Puntaje >= 30) */
+        .priority-medium { border-left-color: #ffc107 !important; } /* Urgente (Puntaje >= 20) */
+        .priority-low { border-left-color: #198754 !important; }    /* Poco Urgente (Puntaje < 20) */
         
-        body { background-color: #f8f9fa; min-height: 100vh; }
-        .sidebar { background-color: #1e293b; color: white; min-height: 100vh; }
-        .nav-pills .nav-link { color: #cbd5e1; border-radius: 8px; margin-bottom: 6px; font-weight: 500; }
-        .nav-pills .nav-link:hover { color: white; background-color: #334155; }
-        .nav-pills .nav-link.active { background-color: #0d6efd !important; color: white !important; }
-        .card-task { border-left: 5px solid #0d6efd; }
-        .priority-high { border-left-color: #dc3545 !important; }   /* Muy Urgente */
-        .priority-medium { border-left-color: #ffc107 !important; } /* Urgente */
-        .priority-low { border-left-color: #198754 !important; }    /* Poco Urgente */
+        /* Ajustes adaptativos para dispositivos móviles */
+        @media (max-width: 576px) {
+            .btn-mobile-full {
+                width: 100% !important;
+                margin-bottom: 6px;
+            }
+            .header-title {
+                font-size: 1.35rem;
+            }
+            .nav-pills .nav-link {
+                font-size: 0.9rem;
+                padding: 8px 12px;
+            }
+        }
     </style>
 </head>
 <body>
 
-<div class="container-fluid">
-    <div class="row">
-        
-        <!-- PANEL IZQUIERDO: Menú de Navegación Sidebar -->
-        <nav class="col-md-3 col-lg-2 sidebar p-3">
-            <div class="d-flex align-items-center mb-4 text-white text-decoration-none">
-                <i class="bi bi-layers-fill fs-3 me-2 text-primary"></i>
-                <span class="fs-5 fw-bold">TaskFlow C++</span>
-            </div>
-            <hr class="text-secondary">
-            <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist">
-                <button class="nav-link active text-start" id="tab-insertar-btn" data-bs-toggle="pill" data-bs-target="#tab-insertar" type="button" role="tab">
-                    <i class="bi bi-plus-circle me-2"></i> Insertar Tarea
-                </button>
-                <button class="nav-link text-start" id="tab-lista-btn" data-bs-toggle="pill" data-bs-target="#tab-lista" type="button" role="tab">
-                    <i class="bi bi-list-task me-2"></i> Mostrar Lista
-                </button>
-                <button class="nav-link text-start" id="tab-creditos-btn" data-bs-toggle="pill" data-bs-target="#tab-creditos" type="button" role="tab">
-                    <i class="bi bi-people me-2"></i> Créditos
-                </button>
-            </div>
-        </nav>
+<!-- BARRA DE NAVEGACIÓN SUPERIOR RESPONSIVA -->
+<nav class="navbar navbar-expand-lg navbar-dark navbar-unam sticky-top shadow-sm">
+    <div class="container-fluid px-3 px-md-4">
+        <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="#">
+            <i class="bi bi-cpu-fill text-warning fs-4"></i>
+            <span>TaskFlow <span class="badge bg-warning text-dark fs-6 ms-1">C++ WASM</span></span>
+        </a>
+        <span class="navbar-text d-none d-md-inline text-light opacity-75 small">
+            FES Acatlán - MAC | Estructuras de Datos
+        </span>
+    </div>
+</nav>
 
-        <!-- PANEL DERECHO: Contenido Dinámico según Pestaña -->
-        <main class="col-md-9 col-lg-10 p-4">
-            <div class="tab-content" id="v-pills-tabContent">
+<div class="container-lg my-3 my-md-4 px-2 px-sm-3">
 
-                <!-- PESTAÑA 1: INSERTAR TAREA -->
-                <div class="tab-pane fade show active" id="tab-insertar" role="tabpanel">
-                    <h3 class="fw-bold text-dark mb-4"><i class="bi bi-plus-square text-primary me-2"></i>Nueva Tarea</h3>
-                    <div class="card shadow-sm p-4" style="max-width: 600px;">
-                        <form id="formTarea" onsubmit="agregarTareaC(event)">
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Descripción de la Actividad:</label>
-                                <input type="text" id="txtTarea" class="form-control" placeholder="Ej. Hacer tarea de Estructuras de Datos" required>
-                            </div>
-                            
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label fw-bold">Nivel de Urgencia:</label>
-                                    <select id="selUrgencia" class="form-select" required>
-                                        <option value="3" selected>🔴 Muy Urgente</option>
-                                        <option value="2">🟡 Urgente</option>
-                                        <option value="1">🟢 Poco Urgente</option>
-                                    </select>
+    <!-- NAVEGACIÓN POR PESTAÑAS RESPONSIVA -->
+    <div class="bg-white p-2 p-md-3 rounded shadow-sm mb-4">
+        <ul class="nav nav-pills nav-fill flex-column flex-sm-row gap-2" id="mainTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active text-start text-sm-center" id="tab-insertar-btn" data-bs-toggle="pill" data-bs-target="#tab-insertar" type="button" role="tab">
+                    <i class="bi bi-plus-circle-fill me-2 text-warning"></i>1. Nueva Tarea
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link text-start text-sm-center position-relative" id="tab-lista-btn" data-bs-toggle="pill" data-bs-target="#tab-lista" type="button" role="tab">
+                    <i class="bi bi-list-stars me-2 text-primary"></i>2. Pendientes (Lista)
+                    <span id="badgeContadorPendientes" class="badge bg-primary rounded-pill ms-1">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link text-start text-sm-center position-relative" id="tab-completadas-btn" data-bs-toggle="pill" data-bs-target="#tab-completadas" type="button" role="tab">
+                    <i class="bi bi-clock-history me-2 text-success"></i>3. Historial (Pila)
+                    <span id="badgeContadorCompletadas" class="badge bg-success rounded-pill ms-1">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link text-start text-sm-center" id="tab-creditos-btn" data-bs-toggle="pill" data-bs-target="#tab-creditos" type="button" role="tab">
+                    <i class="bi bi-mortarboard-fill me-2 text-info"></i>4. Créditos
+                </button>
+            </li>
+        </ul>
+    </div>
+
+    <!-- CONTENIDO DINÁMICO DE LAS PESTAÑAS -->
+    <div class="tab-content" id="mainTabContent">
+
+        <!-- PESTAÑA 1: FORMULARIO DE INSERCIÓN -->
+        <div class="tab-pane fade show active" id="tab-insertar" role="tabpanel">
+            <div class="row justify-content-center">
+                <div class="col-12 col-md-10 col-lg-7">
+                    <div class="card shadow-sm border-0 rounded-3">
+                        <div class="card-header bg-white py-3 border-0">
+                            <h4 class="card-title fw-bold m-0 text-dark header-title">
+                                <i class="bi bi-node-plus-fill text-primary me-2"></i>Agregar Tarea con Prioridad
+                            </h4>
+                            <p class="text-muted small m-0 mt-1">Inserta un nuevo nodo de forma ordenada en la Lista Ligada de C++.</p>
+                        </div>
+                        <div class="card-body p-3 p-md-4">
+                            <form id="formTarea" onsubmit="agregarTareaC(event)">
+                                <div class="mb-3">
+                                    <label for="txtTarea" class="form-label fw-bold">Descripción de la Actividad:</label>
+                                    <input type="text" id="txtTarea" class="form-control form-control-lg" placeholder="Ej. Preparar examen de Estructuras de Datos" required>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label fw-bold">Nivel de Importancia:</label>
-                                    <select id="selImportancia" class="form-select" required>
-                                        <option value="3" selected>⭐ Muy Importante</option>
-                                        <option value="2">🔹 Importante</option>
-                                        <option value="1">🔸 Poco Importante</option>
-                                    </select>
-                                </div>
-                            </div>
 
-                            <button type="submit" id="btnAgregar" class="btn btn-primary w-100 fw-bold mt-2" disabled>
-                                <i class="bi bi-hourglass-split me-1"></i> Cargando C++ en memoria...
+                                <div class="row g-3">
+                                    <div class="col-12 col-sm-6">
+                                        <label for="selUrgencia" class="form-label fw-bold">Nivel de Urgencia:</label>
+                                        <select id="selUrgencia" class="form-select form-select-lg" required>
+                                            <option value="3" selected>🔴 3 - Muy Urgente</option>
+                                            <option value="2">🟡 2 - Urgente</option>
+                                            <option value="1">🟢 1 - Poco Urgente</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-sm-6">
+                                        <label for="selImportancia" class="form-label fw-bold">Nivel de Importancia:</label>
+                                        <select id="selImportancia" class="form-select form-select-lg" required>
+                                            <option value="3" selected>⭐ 3 - Muy Importante</option>
+                                            <option value="2">🔹 2 - Importante</option>
+                                            <option value="1">🔸 1 - Poco Importante</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info border-0 mt-3 p-2 small d-flex align-items-center gap-2">
+                                    <i class="bi bi-calculator-fill fs-5 text-info"></i>
+                                    <span><strong>Fórmula C++:</strong> <code>Prioridad = (Urgencia × 10) + Importancia</code></span>
+                                </div>
+
+                                <button type="submit" id="btnAgregar" class="btn btn-primary btn-lg w-100 fw-bold mt-2 shadow-sm" disabled>
+                                    <i class="bi bi-hourglass-split me-1"></i> Cargando WebAssembly en memoria...
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PESTAÑA 2: LISTA LIGADA DE PENDIENTES -->
+        <div class="tab-pane fade" id="tab-lista" role="tabpanel">
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-body p-3">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
+                        <div>
+                            <h4 class="fw-bold m-0 text-dark header-title">
+                                <i class="bi bi-sort-numeric-down text-primary me-2"></i>Tareas Pendientes (Lista Ligada)
+                            </h4>
+                            <span class="text-muted small">Nodos ordenados dinámicamente de mayor a menor prioridad en la RAM de C++.</span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button class="btn btn-outline-success btn-sm btn-mobile-full fw-bold" onclick="completarTodasC()">
+                                <i class="bi bi-check2-all me-1"></i> Completar Todas
                             </button>
-
-                            
-                        </form>
+                            <button class="btn btn-outline-danger btn-sm btn-mobile-full fw-bold" onclick="eliminarTodasC()">
+                                <i class="bi bi-trash-fill me-1"></i> Eliminar Todas
+                            </button>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- PESTAÑA 2: MOSTRAR LISTA DE TAREAS -->
-                <div class="tab-pane fade" id="tab-lista" role="tabpanel">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h3 class="fw-bold text-dark m-0"><i class="bi bi-sort-down text-primary me-2"></i>Lista de Tareas Ordenadas</h3>
-                        <button class="btn btn-outline-danger btn-sm" onclick="atenderFrenteC()">
-                            <i class="bi bi-check2-circle me-1"></i> Atender Tarea Más Urgente (Frente)
-                        </button>
-                    </div>
+            <!-- Contenedor dinámico de tarjetas -->
+            <div id="contenedorLista" class="d-flex flex-column gap-3">
+                <!-- Se renderiza desde C++ WASM -->
+            </div>
+        </div>
 
-                    <!-- Contenedor donde se insertarán las tarjetas dinámicas -->
-                    <div id="contenedorLista" class="d-flex flex-column gap-3">
-                        <!-- Las tareas se renderizan mediante C++ WASM -->
+        <!-- PESTAÑA 3: HISTORIAL DE COMPLETADAS (PILA) -->
+        <div class="tab-pane fade" id="tab-completadas" role="tabpanel">
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-body p-3">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
+                        <div>
+                            <h4 class="fw-bold m-0 text-dark header-title">
+                                <i class="bi bi-stack text-success me-2"></i>Historial de Completadas (Pila LIFO)
+                            </h4>
+                            <span class="text-muted small">Estructura Pila en RAM C++: La última tarea completada queda en el tope.</span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button class="btn btn-warning btn-sm btn-mobile-full fw-bold text-dark shadow-sm" onclick="restaurarUltimaC()">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar Última (Deshacer)
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm btn-mobile-full fw-bold" onclick="vaciarCompletadasC()">
+                                <i class="bi bi-trash3-fill me-1"></i> Vaciar Historial
+                            </button>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- PESTAÑA 3: CRÉDITOS -->
-                <div class="tab-pane fade" id="tab-creditos" role="tabpanel">
-                    <h3 class="fw-bold text-dark mb-4"><i class="bi bi-info-circle text-primary me-2"></i>Créditos del Proyecto</h3>
-                    <div class="card shadow-sm p-4">
-                        <h4 class="text-primary fw-bold">Universidad Nacional Autónoma de México</h4>
-                        <h5 class="text-secondary">Facultad de Estudios Superiores Acatlán / FCI</h5>
-                        <p class="mb-1"><strong>Carrera:</strong> Licenciatura en Matemáticas Aplicadas y Computación (MAC)</p>
-                        <p class="mb-3"><strong>Asignatura:</strong> Estructuras de Datos</p>
-                        
-                        <hr>
-                        <h6 class="fw-bold">Equipo de Desarrollo:</h6>
-                        <ul class="list-group list-group-flush mb-3">
-                            <li class="list-group-item"><i class="bi bi-person-fill me-2 text-primary"></i>Angel Armando González Carrasco</li>
-                            <li class="list-group-item"><i class="bi bi-person-fill me-2 text-primary"></i>Carlos Leonardo de Aquino Cordero</li>
-                            <li class="list-group-item"><i class="bi bi-person-fill me-2 text-primary"></i>Sahara Montserrat Enríquez Tinoco</li>
-                        </ul>
+            <!-- Contenedor dinámico de la pila -->
+            <div id="contenedorCompletadas" class="d-flex flex-column gap-3">
+                <!-- Se renderiza desde C++ WASM -->
+            </div>
+        </div>
 
-                        <div class="alert alert-light border">
-                            <small class="text-muted"><i class="bi bi-code-slash me-1"></i> <strong>Tecnología:</strong> Aplicación desarrollada en C++ puro utilizando asignación dinámica de memoria (`new`/`delete`) compilada a WebAssembly (WASM) mediante Emscripten.</small>
+        <!-- PESTAÑA 4: CRÉDITOS DEL PROYECTO -->
+        <div class="tab-pane fade" id="tab-creditos" role="tabpanel">
+            <div class="card shadow-sm border-0 p-3 p-md-4">
+                <div class="text-center mb-4">
+                    <span class="badge bg-primary px-3 py-2 fs-6 mb-2">UNAM - FES Acatlán</span>
+                    <h3 class="fw-bold text-dark">Licenciatura en Matemáticas Aplicadas y Computación (MAC)</h3>
+                    <h5 class="text-secondary fw-normal">Asignatura: Estructuras de Datos</h5>
+                </div>
+
+                <hr class="my-3">
+
+                <h5 class="fw-bold text-primary mb-3"><i class="bi bi-diagram-3-fill me-2"></i>Arquitectura del Sistema:</h5>
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-md-6">
+                        <div class="p-3 bg-light rounded border h-100">
+                            <h6 class="fw-bold text-dark"><i class="bi bi-c-circle-fill text-primary me-2"></i>C++ Core (Memoria Dinámica):</h6>
+                            <ul class="small mb-0 ps-3">
+                                <li><code>struct Nodo</code> con punteros dinámicos <code>siguiente</code>.</li>
+                                <li><code>Lista Ligada</code> con inserción ordenada $O(N)$.</li>
+                                <li><code>Pila LIFO</code> para el historial de tareas completadas.</li>
+                                <li>Uso explícito de <code>new</code> para asignación y <code>delete</code> para liberación de memoria RAM.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="p-3 bg-light rounded border h-100">
+                            <h6 class="fw-bold text-dark"><i class="bi bi-browser-chrome text-success me-2"></i>WebAssembly & Frontend:</h6>
+                            <ul class="small mb-0 ps-3">
+                                <li>Compilado con <strong>Emscripten</strong> (<code>emcc</code>) a binario <code>.wasm</code>.</li>
+                                <li>Interfaz web responsiva construida con <strong>Bootstrap 5</strong>.</li>
+                                <li>Intercambio de datos ligero mediante serialización JSON nativa desde C++.</li>
+                                <li>Despliegue automático en <strong>GitHub Pages</strong>.</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
 
+                <div class="alert alert-secondary border-0 mb-0 d-flex align-items-center gap-2">
+                    <i class="bi bi-info-circle-fill fs-5 text-primary"></i>
+                    <small>Este proyecto demuestra la ejecución de algoritmos y estructuras de datos de C++ directamente en el navegador del usuario sin requerir servidores ni backend.</small>
+                </div>
             </div>
-        </main>
+        </div>
+
     </div>
 </div>
 
 <!-- Scripts de Bootstrap -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- Cargar el conector de WebAssembly generado por Emscripten -->
+<!-- Conector de WebAssembly generado por Emscripten -->
 <script src="core.js"></script>
 
 <script>
-    // Declaración de las funciones envueltas de C++ (usamos 'Wasm' al final para evitar colisión de nombres con core.js)
-    let insertarTareaWasm, obtenerListaJSONWasm, eliminarTareaWasm, eliminarFrenteWasm;
+    // Referencias a funciones C++ exportadas
+    let insertarTareaWasm,
+        obtenerListaJSONWasm,
+        obtenerCompletadasJSONWasm,
+        completarTareaWasm,
+        completarTodasWasm,
+        eliminarTareaWasm,
+        eliminarTodasWasm,
+        restaurarUltimaWasm,
+        eliminarCompletadaWasm,
+        vaciarCompletadasWasm;
 
-    // Se ejecuta automáticamente cuando WebAssembly termina de cargar en RAM
+    // Se activa automáticamente cuando el módulo .wasm carga en memoria RAM
     Module.onRuntimeInitialized = function() {
         insertarTareaWasm = Module.cwrap('insertarTarea', null, ['string', 'number', 'number']);
         obtenerListaJSONWasm = Module.cwrap('obtenerListaJSON', 'string', []);
-        eliminarTareaWasm = Module.cwrap('eliminarTarea', 'number', ['string']);
-        eliminarFrenteWasm = Module.cwrap('eliminarFrente', 'number', []);
+        obtenerCompletadasJSONWasm = Module.cwrap('obtenerCompletadasJSON', 'string', []);
+        completarTareaWasm = Module.cwrap('completarTareaWasm', 'number', ['string']);
+        completarTodasWasm = Module.cwrap('completarTodasWasm', 'number', []);
+        eliminarTareaWasm = Module.cwrap('eliminarTareaWasm', 'number', ['string']);
+        eliminarTodasWasm = Module.cwrap('eliminarTodasWasm', 'number', []);
+        restaurarUltimaWasm = Module.cwrap('restaurarUltimaWasm', 'number', []);
+        eliminarCompletadaWasm = Module.cwrap('eliminarCompletadaWasm', 'number', ['string']);
+        vaciarCompletadasWasm = Module.cwrap('vaciarCompletadasWasm', null, []);
 
+        // Habilitar el botón principal
         const btn = document.getElementById('btnAgregar');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-save me-1"></i> Agregar a la lista';
+        if (btn) {
+            btn.disabled = false;
+            btn.className = "btn btn-primary btn-lg w-100 fw-bold mt-2 shadow-sm";
+            btn.innerHTML = '<i class="bi bi-plus-circle me-1"></i> Agregar a la Cola de Prioridad';
+        }
 
-        renderizarListaDesdeC();
+        renderizarTodo();
     };
 
-    function renderizarListaDesdeC() {
+    function renderizarTodo() {
+        renderizarPendientes();
+        renderizarCompletadas();
+    }
+
+    // Renderizar la Lista Ligada de Pendientes desde C++
+    function renderizarPendientes() {
         if (!obtenerListaJSONWasm) return;
 
         const jsonStr = obtenerListaJSONWasm();
         const tareas = JSON.parse(jsonStr);
         const contenedor = document.getElementById("contenedorLista");
+        const contadorBadge = document.getElementById("badgeContadorPendientes");
+        
+        contadorBadge.innerText = tareas.length;
         contenedor.innerHTML = "";
 
         if (tareas.length === 0) {
-            contenedor.innerHTML = `<div class="alert alert-success text-center"><i class="bi bi-check-circle me-2"></i>¡No hay tareas pendientes en la memoria RAM de C++!</div>`;
+            contenedor.innerHTML = `
+                <div class="card border-0 shadow-sm p-4 text-center">
+                    <i class="bi bi-check-circle-fill text-success fs-1 mb-2"></i>
+                    <h5 class="fw-bold text-dark m-0">¡No hay tareas pendientes!</h5>
+                    <p class="text-muted small m-0 mt-1">La memoria de la Lista Ligada en C++ está totalmente vacía.</p>
+                </div>`;
             return;
         }
 
         tareas.forEach((item, index) => {
-            let badgeColor = item.urgencia === 3 ? "bg-danger" : (item.urgencia === 2 ? "bg-warning text-dark" : "bg-success");
-            let borderClass = item.urgencia === 3 ? "priority-high" : (item.urgencia === 2 ? "priority-medium" : "priority-low");
+            let badgeColor = item.prioridad >= 30 ? "bg-danger" : (item.prioridad >= 20 ? "bg-warning text-dark" : "bg-success");
+            let borderClass = item.prioridad >= 30 ? "priority-high" : (item.prioridad >= 20 ? "priority-medium" : "priority-low");
             
             let html = `
                 <div class="card shadow-sm card-task ${borderClass} p-3">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
                         <div>
-                            <span class="badge ${badgeColor} me-2">Prioridad #${index + 1} (Puntaje C++: ${item.prioridad})</span>
-                            <h5 class="d-inline fw-bold text-dark">${item.tarea}</h5>
-                            <div class="mt-2 text-muted small">
-                                <span>Urgencia: ${item.urgencia === 3 ? 'Muy Urgente' : (item.urgencia === 2 ? 'Urgente' : 'Poco Urgente')}</span> | 
-                                <span>Importancia: ${item.importancia === 3 ? 'Muy Importante' : (item.importancia === 2 ? 'Importante' : 'Poco Importante')}</span>
+                            <div class="mb-1">
+                                <span class="badge ${badgeColor} me-2">#${index + 1} | Prioridad C++: ${item.prioridad}</span>
                             </div>
+                            <h5 class="fw-bold text-dark m-0">${escaparHTML(item.tarea)}</h5>
                         </div>
-                        <button class="btn btn-outline-success btn-sm" onclick="completarTareaC('${item.tarea.replace(/'/g, "\\'")}')">
-                            <i class="bi bi-check-lg me-1"></i> Completar
+                        <div class="d-flex gap-2 align-self-end align-self-sm-center">
+                            <button class="btn btn-success btn-sm fw-bold px-3" onclick="completarTareaC('${escaparJS(item.tarea)}')">
+                                <i class="bi bi-check-lg me-1"></i> Completar
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm fw-bold px-2" title="Eliminar definitivamente" onclick="eliminarTareaC('${escaparJS(item.tarea)}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            contenedor.innerHTML += html;
+        });
+    }
+
+    // Renderizar la Pila de Completadas desde C++
+    function renderizarCompletadas() {
+        if (!obtenerCompletadasJSONWasm) return;
+
+        const jsonStr = obtenerCompletadasJSONWasm();
+        const completadas = JSON.parse(jsonStr);
+        const contenedor = document.getElementById("contenedorCompletadas");
+        const contadorBadge = document.getElementById("badgeContadorCompletadas");
+
+        contadorBadge.innerText = completadas.length;
+        contenedor.innerHTML = "";
+
+        if (completadas.length === 0) {
+            contenedor.innerHTML = `
+                <div class="card border-0 shadow-sm p-4 text-center">
+                    <i class="bi bi-inbox-fill text-secondary fs-1 mb-2"></i>
+                    <h5 class="fw-bold text-dark m-0">Historial de completadas vacío</h5>
+                    <p class="text-muted small m-0 mt-1">No hay nodos guardados en la Pila de C++.</p>
+                </div>`;
+            return;
+        }
+
+        completadas.forEach((item, index) => {
+            let esTope = (index === 0) ? '<span class="badge bg-warning text-dark me-2"><i class="bi bi-arrow-up-circle me-1"></i>Tope de Pila (Próximo Undo)</span>' : '';
+            
+            let html = `
+                <div class="card shadow-sm border-0 border-start border-4 border-success p-3 bg-white">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
+                        <div>
+                            <div class="mb-1">
+                                ${esTope}
+                                <span class="badge bg-secondary">Prioridad original: ${item.prioridad}</span>
+                            </div>
+                            <h5 class="fw-bold text-secondary text-decoration-line-through m-0">${escaparHTML(item.tarea)}</h5>
+                        </div>
+                        <button class="btn btn-outline-danger btn-sm align-self-end align-self-sm-center" onclick="eliminarCompletadaC('${escaparJS(item.tarea)}')">
+                            <i class="bi bi-x-circle me-1"></i> Quitar del historial
                         </button>
                     </div>
                 </div>
@@ -194,34 +418,84 @@
         });
     }
 
+    // --- FUNCIONES INTERMEDIARIAS JS -> WASM ---
+
     function agregarTareaC(e) {
         e.preventDefault();
-        const desc = document.getElementById("txtTarea").value;
+        const txtInput = document.getElementById("txtTarea");
+        const desc = txtInput.value.trim();
         const urg = parseInt(document.getElementById("selUrgencia").value);
         const imp = parseInt(document.getElementById("selImportancia").value);
 
-        // Llamada directa a C++ en WebAssembly
+        if (!desc) return;
+
+        // Llamada directa a C++
         insertarTareaWasm(desc, urg, imp);
 
-        document.getElementById("txtTarea").value = "";
-        
-        // Cambiar a la pestaña de lista para ver el resultado ordenado por C++
-        const listaTab = new bootstrap.Tab(document.getElementById('tab-lista-btn'));
-        listaTab.show();
-        
-        renderizarListaDesdeC();
+        txtInput.value = "";
+
+        // Cambiar a la pestaña de la lista de pendientes
+        const tabListaBtn = new bootstrap.Tab(document.getElementById('tab-lista-btn'));
+        tabListaBtn.show();
+
+        renderizarTodo();
     }
 
-    function completarTareaC(nombreTarea) {
-        // Llamada a C++ para eliminar por nombre y liberar memoria
-        eliminarTareaWasm(nombreTarea);
-        renderizarListaDesdeC();
+    function completarTareaC(tarea) {
+        completarTareaWasm(tarea);
+        renderizarTodo();
     }
 
-    function atenderFrenteC() {
-        // Llamada a C++ para eliminar el frente (cabeza)
-        eliminarFrenteWasm();
-        renderizarListaDesdeC();
+    function completarTodasC() {
+        completarTodasWasm();
+        renderizarTodo();
+    }
+
+    function eliminarTareaC(tarea) {
+        if (confirm(`¿Está seguro de que desea eliminar permanentemente la tarea '${tarea}'?`)) {
+            eliminarTareaWasm(tarea);
+            renderizarTodo();
+        }
+    }
+
+    function eliminarTodasC() {
+        if (confirm("¿Está seguro de eliminar TODAS las tareas pendientes de la RAM?")) {
+            eliminarTodasWasm();
+            renderizarTodo();
+        }
+    }
+
+    function restaurarUltimaC() {
+        const resultado = restaurarUltimaWasm();
+        if (resultado === 0) {
+            alert("No hay tareas en el historial de completadas para restaurar.");
+        } else {
+            // Cambiar a la pestaña de pendientes para ver la tarea restaurada
+            const tabListaBtn = new bootstrap.Tab(document.getElementById('tab-lista-btn'));
+            tabListaBtn.show();
+            renderizarTodo();
+        }
+    }
+
+    function eliminarCompletadaC(tarea) {
+        eliminarCompletadaWasm(tarea);
+        renderizarTodo();
+    }
+
+    function vaciarCompletadasC() {
+        if (confirm("¿Está seguro de vaciar todo el historial de tareas completadas?")) {
+            vaciarCompletadasWasm();
+            renderizarTodo();
+        }
+    }
+
+    // Funciones auxiliares de escape de texto
+    function escaparHTML(str) {
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function escaparJS(str) {
+        return str.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
     }
 </script>
 
