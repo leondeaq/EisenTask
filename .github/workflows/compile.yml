@@ -10,17 +10,17 @@ jobs:
 
     steps:
     - name: Descargar repositorio
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Configurar Emscripten (emcc)
-      uses: mymindstorm/setup-emsdk@v12
+      uses: mymindstorm/setup-emsdk@v14
 
     - name: Compilar C++ a WebAssembly
       run: |
         emcc core.cpp -o core.js -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]' -s NO_EXIT_RUNTIME=1
 
     - name: Guardar binarios compilados
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: wasm-binaries
         path: |
