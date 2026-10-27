@@ -17,8 +17,7 @@ jobs:
 
     - name: Compilar C++ a WebAssembly
       run: |
-        emcc core.cpp -o core.js -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]' -s NO_EXIT_RUNTIME=1
-
+        emcc core.cpp -o core.js -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]' -s NO_EXIT_RUNTIME=1 -lstdc++
     - name: Guardar binarios compilados
       uses: actions/upload-artifact@v4
       with:
