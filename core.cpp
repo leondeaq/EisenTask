@@ -6,39 +6,179 @@
 
 using namespace std;
 
-// --- Estructura del Nodo de la Lista Ligada ---
+// --- Estructura exacta del Nodo ---
 struct Nodo {
-    string tarea;
-    int urgencia;
-    int importancia;
     int prioridad;
-    Nodo* siguiente;
-
-    Nodo(string t, int u, int i, int p) {
-        tarea = t;
-        urgencia = u;
-        importancia = i;
-        prioridad = p;
-        siguiente = nullptr;
-    }
+    Nodo *siguiente;
+    string tarea;
 };
 
-// --- Puntero Global en la RAM del navegador ---
-Nodo* listaGlobal = nullptr;
+// --- Punteros Globales en la RAM del navegador ---
+Nodo* listaGlobal = nullptr;          // Lista de tareas pendientes
+Nodo* pilaCompletadasGlobal = nullptr; // Pila de tareas completadas
 
-// --- Buffer global para enviar JSON a JavaScript ---
-string bufferSalida;
+// --- Buffers globales para enviar JSON a JavaScript ---
+string bufferPendientesJSON;
+string bufferCompletadasJSON;
 
 // --- Funciones auxiliares internas ---
-int calcularPrioridadTotal(int urgencia, int importancia) {
+int prioridadTotal(int urgencia, int importancia) {
     return (urgencia * 10) + importancia;
 }
 
 string aMinusculas(string str) {
-    transform(str.begin(), str.end(), str.begin(), [](unsigned char c){
+    transform(str.begin(), str.end(), str.begin(), [](unsigned char c) {
         return tolower(c);
     });
     return str;
+}
+
+string escaparJSON(string str) {
+    string res = "";
+    for (char c : str) {
+        if (c == '"') res += "\\\"";
+        else if (c == '\\') res += "\\\\";
+        else res += c;
+    }
+    return res;
+}
+
+// --- Funciones de la Lista Ligada Ordenada ---
+void insertarLista(Nodo *&lista, Nodo *nuevo_nodo) {
+    if (nuevo_nodo == nullptr) return;
+
+    Nodo *aux1 = lista;
+    Nodo *aux2 = nullptr;
+
+    while ((aux1 != nullptr) && (aux1->prioridad >= nuevo_nodo->prioridad)) {
+        aux2 = aux1;
+        aux1 = aux1->siguiente;
+    }
+
+    if (lista == aux1) {
+        lista = nuevo_nodo;
+    } else {
+        aux2->siguiente = nuevo_nodo;
+    }
+
+    nuevo_nodo->siguiente = aux1;
+}
+
+void insertarLista(Nodo *&lista, int urgencia, int importancia, string tarea) {
+    Nodo *nuevo_nodo = new Nodo();
+    nuevo_nodo->tarea = aMinusculas(tarea);
+    nuevo_nodo->prioridad = prioridadTotal(urgencia, importancia);
+    nuevo_nodo->siguiente = nullptr;
+
+    insertarLista(lista, nuevo_nodo);
+}
+
+void eliminarNodo(Nodo *&lista, string tarea) {
+    if (lista == nullptr) return;
+
+    string busqueda = aMinusculas(tarea);
+    Nodo *aux_borrar = lista;
+    Nodo *anterior = nullptr;
+
+    while ((aux_borrar != nullptr) && (aux_borrar->tarea != busqueda)) {
+        anterior = aux_borrar;
+        aux_borrar = aux_borrar->siguiente;
+    }
+
+    if (aux_borrar == nullptr) return;
+
+    if (anterior == nullptr) {
+        lista = lista->siguiente;
+    } else {
+        anterior->siguiente = aux_borrar->siguiente;
+    }
+
+    delete aux_borrar;
+}
+
+void eliminarLista(Nodo *&lista) {
+    while (lista != nullptr) {
+        Nodo *aux = lista;
+        lista = aux->siguiente;
+        delete aux;
+    }
+}
+
+// --- Funciones de la Pila de Completadas ---
+void agregarPila(Nodo *&pila, Nodo *&tarea) {
+    if (tarea == nullptr) return;
+    tarea->siguiente = pila;
+    pila = tarea;
+    tarea = nullptr;
+}
+
+Nodo *removerPila(Nodo *&pila) {
+    if (pila == nullptr) return nullptr;
+    Nodo *aux = pila;
+    pila = pila->siguiente;
+    aux->siguiente = nullptr;
+    return aux;
+}
+
+void eliminarCompletada(Nodo *&pila, string tarea) {
+    if (pila == nullptr) return;
+
+    string busqueda = aMinusculas(tarea);
+    Nodo *actual = pila;
+    Nodo *anterior = nullptr;
+
+    while (actual != nullptr && actual->tarea != busqueda) {
+        anterior = actual;
+        actual = actual->siguiente;
+    }
+
+    if (actual == nullptr) return;
+
+    if (anterior == nullptr) {
+        pila = actual->siguiente;
+    } else {
+        anterior->siguiente = actual->siguiente;
+    }
+
+    delete actual;
+}
+
+void vaciarCompletadas(Nodo *&pila) {
+    eliminarLista(pila);
+}
+
+// --- Operaciones entre Lista y Pila ---
+void completarTarea(Nodo *&lista, Nodo *&completadas, string tarea) {
+    if (lista == nullptr) return;
+
+    string busqueda = aMinusculas(tarea);
+    Nodo *actual = lista;
+    Nodo *anterior = nullptr;
+
+    while (actual != nullptr && actual->tarea != busqueda) {
+        anterior = actual;
+        actual = actual->siguiente;
+    }
+
+    if (actual == nullptr) return;
+
+    if (anterior == nullptr) {
+        lista = actual->siguiente;
+    } else {
+        anterior->siguiente = actual->siguiente;
+    }
+    actual->siguiente = nullptr;
+
+    agregarPila(completadas, actual);
+}
+
+void completarTodas(Nodo *&lista, Nodo *&completadas) {
+    while (lista != nullptr) {
+        Nodo *aux = lista;
+        lista = lista->siguiente;
+        aux->siguiente = nullptr;
+        agregarPila(completadas, aux);
+    }
 }
 
 // =================================================================
@@ -46,100 +186,101 @@ string aMinusculas(string str) {
 // =================================================================
 extern "C" {
 
-    // 1. Insertar tarea en orden descendente de prioridad
+    // 1. Insertar tarea pendiente con prioridad
     EMSCRIPTEN_KEEPALIVE
     void insertarTarea(const char* c_tarea, int urgencia, int importancia) {
-        string tarea = aMinusculas(string(c_tarea));
-        int prioridad = calcularPrioridadTotal(urgencia, importancia);
-
-        Nodo* nuevo_nodo = new Nodo(tarea, urgencia, importancia, prioridad);
-
-        if (listaGlobal == nullptr || nuevo_nodo->prioridad > listaGlobal->prioridad) {
-            nuevo_nodo->siguiente = listaGlobal;
-            listaGlobal = nuevo_nodo;
-            return;
-        }
-
-        Nodo* aux1 = listaGlobal;
-        Nodo* aux2 = nullptr;
-
-        while (aux1 != nullptr && aux1->prioridad >= nuevo_nodo->prioridad) {
-            aux2 = aux1;
-            aux1 = aux1->siguiente;
-        }
-
-        aux2->siguiente = nuevo_nodo;
-        nuevo_nodo->siguiente = aux1;
+        insertarLista(listaGlobal, urgencia, importancia, string(c_tarea));
     }
 
-    // 2. Obtener lista completa en formato JSON para la interfaz web
+    // 2. Obtener la lista de pendientes en JSON
     EMSCRIPTEN_KEEPALIVE
     const char* obtenerListaJSON() {
-        bufferSalida = "[";
+        bufferPendientesJSON = "[";
         Nodo* actual = listaGlobal;
 
         while (actual != nullptr) {
-            bufferSalida += "{\"tarea\":\"" + actual->tarea + "\",";
-            bufferSalida += "\"urgencia\":" + to_string(actual->urgencia) + ",";
-            bufferSalida += "\"importancia\":" + to_string(actual->importancia) + ",";
-            bufferSalida += "\"prioridad\":" + to_string(actual->prioridad) + "}";
+            bufferPendientesJSON += "{\"tarea\":\"" + escaparJSON(actual->tarea) + "\",";
+            bufferPendientesJSON += "\"prioridad\":" + to_string(actual->prioridad) + "}";
 
             if (actual->siguiente != nullptr) {
-                bufferSalida += ",";
+                bufferPendientesJSON += ",";
             }
             actual = actual->siguiente;
         }
 
-        bufferSalida += "]";
-        return bufferSalida.c_str();
+        bufferPendientesJSON += "]";
+        return bufferPendientesJSON.c_str();
     }
 
-    // 3. Eliminar una tarea especÍfica por su nombre
+    // 3. Obtener el historial de completadas (Pila) en JSON
     EMSCRIPTEN_KEEPALIVE
-    int eliminarTarea(const char* c_tarea) {
-        if (listaGlobal == nullptr) return 0;
+    const char* obtenerCompletadasJSON() {
+        bufferCompletadasJSON = "[";
+        Nodo* actual = pilaCompletadasGlobal;
 
-        string tarea = aMinusculas(string(c_tarea));
-        Nodo* aux_borrar = listaGlobal;
-        Nodo* anterior = nullptr;
+        while (actual != nullptr) {
+            bufferCompletadasJSON += "{\"tarea\":\"" + escaparJSON(actual->tarea) + "\",";
+            bufferCompletadasJSON += "\"prioridad\":" + to_string(actual->prioridad) + "}";
 
-        while (aux_borrar != nullptr && aux_borrar->tarea != tarea) {
-            anterior = aux_borrar;
-            aux_borrar = aux_borrar->siguiente;
+            if (actual->siguiente != nullptr) {
+                bufferCompletadasJSON += ",";
+            }
+            actual = actual->siguiente;
         }
 
-        if (aux_borrar == nullptr) {
-            return 0; // No encontrada
-        }
-
-        if (anterior == nullptr) {
-            listaGlobal = listaGlobal->siguiente;
-        } else {
-            anterior->siguiente = aux_borrar->siguiente;
-        }
-
-        delete aux_borrar; // Liberar memoria dinámica
-        return 1; // Éxito
+        bufferCompletadasJSON += "]";
+        return bufferCompletadasJSON.c_str();
     }
 
-    // 4. Eliminar la tarea más prioritaria (el frente)
+    // 4. Completar una tarea especifica (mover a la Pila)
     EMSCRIPTEN_KEEPALIVE
-    int eliminarFrente() {
-        if (listaGlobal == nullptr) return 0;
-
-        Nodo* temp = listaGlobal;
-        listaGlobal = listaGlobal->siguiente;
-        delete temp;
+    int completarTareaWasm(const char* c_tarea) {
+        completarTarea(listaGlobal, pilaCompletadasGlobal, string(c_tarea));
         return 1;
     }
 
-    // 5. Vaciar toda la lista y liberar memoria dinámica
+    // 5. Completar TODAS las tareas (mover todas a la Pila)
     EMSCRIPTEN_KEEPALIVE
-    void vaciarLista() {
-        while (listaGlobal != nullptr) {
-            Nodo* aux = listaGlobal;
-            listaGlobal = listaGlobal->siguiente;
-            delete aux;
+    int completarTodasWasm() {
+        completarTodas(listaGlobal, pilaCompletadasGlobal);
+        return 1;
+    }
+
+    // 6. Eliminar una tarea pendiente (delete directo en C++)
+    EMSCRIPTEN_KEEPALIVE
+    int eliminarTareaWasm(const char* c_tarea) {
+        eliminarNodo(listaGlobal, string(c_tarea));
+        return 1;
+    }
+
+    // 7. Eliminar TODAS las tareas pendientes
+    EMSCRIPTEN_KEEPALIVE
+    int eliminarTodasWasm() {
+        eliminarLista(listaGlobal);
+        return 1;
+    }
+
+    // 8. Restaurar la ultima tarea completada (Undo de la Pila a la Lista)
+    EMSCRIPTEN_KEEPALIVE
+    int restaurarUltimaWasm() {
+        Nodo* restaurada = removerPila(pilaCompletadasGlobal);
+        if (restaurada != nullptr) {
+            insertarLista(listaGlobal, restaurada);
+            return 1;
         }
+        return 0;
+    }
+
+    // 9. Eliminar una tarea especifica del historial de completadas
+    EMSCRIPTEN_KEEPALIVE
+    int eliminarCompletadaWasm(const char* c_tarea) {
+        eliminarCompletada(pilaCompletadasGlobal, string(c_tarea));
+        return 1;
+    }
+
+    // 10. Vaciar todo el historial de completadas
+    EMSCRIPTEN_KEEPALIVE
+    void vaciarCompletadasWasm() {
+        vaciarCompletadas(pilaCompletadasGlobal);
     }
 }
